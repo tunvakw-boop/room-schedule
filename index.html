@@ -345,8 +345,12 @@
           <input type="date" id="depositDate">
         </div>
         <div class="form-group">
+          <label>🛏 เตียงเสริม (จำนวน)</label>
+          <input type="number" id="extraBeds" min="0" max="20" value="0" placeholder="0 = ไม่มี">
+        </div>
+        <div class="form-group">
           <label>หมายเหตุ (ถ้ามี)</label>
-          <input type="text" id="notes" placeholder="เช่น ขอเตียงเสริม, มาเป็นกรุ๊ป">
+          <input type="text" id="notes" placeholder="เช่น มาเป็นกรุ๊ป, แพ้อาหาร">
         </div>
       </div>
       <div class="form-actions">
@@ -526,7 +530,8 @@ function dbToJs(row) {
     status: row.status || 'confirmed',
     roomType: row.room_type || null,
     extraInfo: extra,
-    depositDate: (extra && extra.deposit_date) || ''
+    depositDate: (extra && extra.deposit_date) || '',
+    extraBeds: (extra && extra.extra_beds) || 0
   };
 }
 function jsToDb(b) {
@@ -542,7 +547,7 @@ function jsToDb(b) {
   if (b.status) obj.status = b.status;
   if (b.externalId) obj.external_id = b.externalId;
   if (b.roomType) obj.room_type = b.roomType;
-  const mergedExtra = { ...(b.extraInfo || {}), deposit_date: b.depositDate || null };
+  const mergedExtra = { ...(b.extraInfo || {}), deposit_date: b.depositDate || null, extra_beds: b.extraBeds || 0 };
   obj.extra_info = mergedExtra;
   return obj;
 }
@@ -682,8 +687,8 @@ function renderCalendar() {
       // Already sorted in dbToJs, but ensure here too
       const sortedRooms = [...b.rooms].sort((x, y) => x - y);
       const roomStr = sortedRooms.length > 3 ? sortedRooms.length + ' ห้อง' : 'ห้อง ' + sortedRooms.join(',');
-      pill.textContent = roomStr + ' ' + b.name;
-      pill.title = b.name + ' - ' + roomStr;
+      pill.textContent = roomStr + ' ' + b.name + (b.extraBeds > 0 ? ' 🛏' + b.extraBeds : '');
+      pill.title = b.name + ' - ' + roomStr + (b.extraBeds > 0 ? ' + เตียงเสริม ' + b.extraBeds : '');
       dayCell.appendChild(pill);
       pillCount++;
     });
@@ -714,7 +719,7 @@ function showDayDetails(dateStr) {
       const nightNum = dateRange(b.checkIn, b.checkOut).indexOf(dateStr) + 1;
       const total = nightsBetween(b.checkIn, b.checkOut);
       const sortedRooms = [...b.rooms].sort((x,y) => x - y);
-      msg += '🛋️ ห้อง ' + sortedRooms.join(',') + ' - ' + b.name + ' (คืนที่ ' + nightNum + '/' + total + ')\n';
+      msg += '🛋️ ห้อง ' + sortedRooms.join(',') + ' - ' + b.name + ' (คืนที่ ' + nightNum + '/' + total + ')' + (b.extraBeds > 0 ? ' 🛏เตียงเสริม ' + b.extraBeds : '') + '\n';
     });
   }
   alert(msg);
@@ -770,6 +775,7 @@ async function saveBooking() {
   const co = document.getElementById('checkOut').value;
   const notes = document.getElementById('notes').value.trim();
   const depositDate = document.getElementById('depositDate').value;
+  const extraBeds = parseInt(document.getElementById('extraBeds').value) || 0;
   const rooms = getSelectedRooms();
   if (!name) return showToast('กรุณาใส่ชื่อลูกค้า', 'error');
   if (!ci || !co) return showToast('กรุณาเลือกวันที่', 'error');
@@ -783,7 +789,7 @@ async function saveBooking() {
 
   const editingBooking = editingId ? bookings.find(x => x.id === editingId) : null;
   const payload = jsToDb({
-    name, type, checkIn: ci, checkOut: co, rooms, notes, depositDate,
+    name, type, checkIn: ci, checkOut: co, rooms, notes, depositDate, extraBeds,
     source: editingBooking ? editingBooking.source : 'manual',
     status: editingBooking ? (rooms.length > 0 ? 'confirmed' : editingBooking.status) : 'confirmed',
     externalId: editingBooking ? editingBooking.externalId : null,
@@ -820,6 +826,7 @@ function resetForm() {
   document.getElementById('checkIn').value = '';
   document.getElementById('checkOut').value = '';
   document.getElementById('depositDate').value = '';
+  document.getElementById('extraBeds').value = '0';
   document.getElementById('notes').value = '';
   document.querySelectorAll('#roomChips .room-chip.selected').forEach(c => c.classList.remove('selected'));
   document.getElementById('addAlert').innerHTML = '';
@@ -840,6 +847,7 @@ function editBooking(id) {
     document.getElementById('checkIn').value = b.checkIn;
     document.getElementById('checkOut').value = b.checkOut;
     document.getElementById('depositDate').value = b.depositDate || '';
+    document.getElementById('extraBeds').value = b.extraBeds || 0;
     document.getElementById('notes').value = b.notes || '';
     document.querySelectorAll('#roomChips .room-chip').forEach(c => {
       c.classList.toggle('selected', b.rooms.includes(parseInt(c.dataset.room)));
@@ -1066,7 +1074,7 @@ function renderBookingList() {
       '<div class="booking-info">' +
         '<div class="booking-name">' + (b.type === 'group' ? '👥 ' : '👤 ') + escapeHtml(b.name) + statusBadge + sourceBadge(b) + (isC ? '<span style="color:#e74c3c">⚠️ ห้องชน!</span>' : '') + '</div>' +
         roomTypeStr +
-        '<div class="booking-meta">' + dateStr + ' · ' + nights + ' คืน' + (b.depositDate ? ' · 💰 มัดจำ ' + parseDate(b.depositDate).getDate() + '/' + (parseDate(b.depositDate).getMonth()+1) + '/' + (parseDate(b.depositDate).getFullYear()+543) : '') + (b.notes ? ' · ' + escapeHtml(b.notes) : '') + '</div>' +
+        '<div class="booking-meta">' + dateStr + ' · ' + nights + ' คืน' + (b.extraBeds > 0 ? ' · 🛏 เตียงเสริม ' + b.extraBeds : '') + (b.depositDate ? ' · 💰 มัดจำ ' + parseDate(b.depositDate).getDate() + '/' + (parseDate(b.depositDate).getMonth()+1) + '/' + (parseDate(b.depositDate).getFullYear()+543) : '') + (b.notes ? ' · ' + escapeHtml(b.notes) : '') + '</div>' +
         '<div class="booking-rooms">' + roomsHtml + '</div>' +
       '</div>' +
       '<div class="booking-actions">' +
@@ -1266,7 +1274,8 @@ function generateLineMessage() {
         ? (sortedRooms.length >= TOTAL_ROOMS - 2 ? 'ใช้ทุกห้อง' : 'ห้อง ' + sortedRooms.join(','))
         : 'ห้อง ' + sortedRooms[0];
       const nightStr = (useNight && totalNights > 1) ? ' (คืนที่' + nightNum + ')' : '';
-      msg += bed + roomList + ' ' + (booking.type === 'group' ? 'กรุ๊ป' + booking.name : 'คุณ ' + booking.name) + nightStr + '\n';
+      const bedStr = booking.extraBeds > 0 ? ' +' + booking.extraBeds + '🛏' : '';
+      msg += bed + roomList + ' ' + (booking.type === 'group' ? 'กรุ๊ป' + booking.name : 'คุณ ' + booking.name) + nightStr + bedStr + '\n';
     });
   });
   if (!hasAny) msg += '\n(ไม่มีการจองในช่วงวันที่เลือก)';
