@@ -1265,7 +1265,7 @@ function generateLineMessage() {
       const roomList = sortedRooms.length > 1
         ? (sortedRooms.length >= TOTAL_ROOMS - 2 ? 'ใช้ทุกห้อง' : 'ห้อง ' + sortedRooms.join(','))
         : 'ห้อง ' + sortedRooms[0];
-      const nightStr = (useNight && totalNights > 1) ? ' (คืนที่' + nightNum + ')' : '';
+      const nightStr = (useNight && totalNights > 1) ? ' (คืนที่' + nightNum + '/' + totalNights + ')' : '';
       const bedStr = booking.extraBeds > 0 ? ' 🛏เตียงเสริม ' + booking.extraBeds : '';
       msg += bed + roomList + ' ' + (booking.type === 'group' ? 'กรุ๊ป' + booking.name : 'คุณ ' + booking.name) + nightStr + bedStr + '\n';
     });
