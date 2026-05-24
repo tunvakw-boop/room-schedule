@@ -1030,7 +1030,7 @@ function renderBookingList() {
   // Sort confirmed by status
   const groups = { upcoming: [], active: [], past: [] };
   confirmed.forEach(b => groups[getBookingStatus(b, today)].push(b));
-  groups.upcoming.sort((a, b) => b.checkIn.localeCompare(a.checkIn));
+  groups.upcoming.sort((a, b) => a.checkIn.localeCompare(b.checkIn));
   groups.active.sort((a, b) => b.checkOut.localeCompare(a.checkOut));
   groups.past.sort((a, b) => b.checkOut.localeCompare(a.checkOut));
   pending.sort((a, b) => b.checkIn.localeCompare(a.checkIn));
