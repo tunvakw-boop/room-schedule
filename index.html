@@ -864,6 +864,7 @@ function openQuickAssign(bookingId) {
   const adults = b.extraInfo && b.extraInfo.no_of_adults ? b.extraInfo.no_of_adults + ' ผู้ใหญ่' : '';
   const noOfRooms = b.extraInfo && b.extraInfo.no_of_rooms ? b.extraInfo.no_of_rooms : 1;
   const country = b.extraInfo && b.extraInfo.country ? '🌍 ' + b.extraInfo.country : '';
+  const specialReqModal = b.extraInfo && b.extraInfo.special_requests ? b.extraInfo.special_requests : '';
 
   document.getElementById('quickAssignInfo').innerHTML =
     '<div class="name">' + guestEmoji + ' ' + escapeHtml(b.name) + ' ' + sourceTag + '</div>' +
@@ -871,7 +872,8 @@ function openQuickAssign(bookingId) {
     '<div class="meta">📅 ' + dateStr + ' · ' + nights + ' คืน</div>' +
     (adults || noOfRooms > 1 ? '<div class="meta">' + (noOfRooms > 1 ? noOfRooms + ' ห้อง · ' : '') + adults + '</div>' : '') +
     (country ? '<div class="meta">' + country + '</div>' : '') +
-    (b.notes ? '<div class="meta" style="margin-top:6px;font-style:italic">📝 ' + escapeHtml(b.notes) + '</div>' : '');
+    (specialReqModal ? '<div class="meta" style="color:#8e44ad">💬 ' + escapeHtml(specialReqModal) + '</div>' : '') +
+    (b.notes && b.source !== 'agoda' ? '<div class="meta" style="margin-top:6px;font-style:italic">📝 ' + escapeHtml(b.notes) + '</div>' : '');
 
   // Build room chips
   const grid = document.getElementById('quickAssignRooms');
@@ -1062,13 +1064,12 @@ function renderBookingList() {
     const extraBedAg  = (b.extraInfo && b.extraInfo.no_of_extra_beds > 0) ? '🛏 เตียงเสริม ' + b.extraInfo.no_of_extra_beds : '';
     const specialReq  = (b.extraInfo && b.extraInfo.special_requests) ? b.extraInfo.special_requests : '';
     const agodaMeta   = [noOfRooms, guestCount, extraBedAg].filter(Boolean).join(' · ');
-    const roomTypeStr = (b.roomType || agodaMeta || specialReq)
-      ? '<div style="font-size:12px;color:#34495e;margin-top:4px;font-weight:600">'
-          + (b.roomType ? '📋 ' + escapeHtml(b.roomType) : '')
-          + (agodaMeta ? '<span style="color:#7f8c8d;font-weight:500"> · ' + agodaMeta + '</span>' : '')
-        + '</div>'
-        + (specialReq ? '<div style="font-size:12px;color:#8e44ad;margin-top:2px">💬 ' + escapeHtml(specialReq) + '</div>' : '')
-      : '';
+    const headerParts = (b.roomType ? '📋 ' + escapeHtml(b.roomType) : '')
+      + (agodaMeta ? (b.roomType ? ' · ' : '') + '<span style="color:#7f8c8d;font-weight:500">' + agodaMeta + '</span>' : '');
+    const roomTypeStr = [
+      headerParts ? '<div style="font-size:12px;color:#34495e;margin-top:4px;font-weight:600">' + headerParts + '</div>' : '',
+      specialReq ? '<div style="font-size:12px;color:#8e44ad;margin-top:2px">💬 ' + escapeHtml(specialReq) + '</div>' : ''
+    ].filter(Boolean).join('');
     const actionBtn = b.status === 'pending'
       ? '<button class="btn btn-sm btn-primary" onclick="openQuickAssign(\'' + b.id + '\')">⚡ จัดห้องด่วน</button>'
       : '<button class="btn btn-sm" onclick="editBooking(\'' + b.id + '\')">✏️ แก้ไข</button>';
@@ -1076,7 +1077,7 @@ function renderBookingList() {
       '<div class="booking-info">' +
         '<div class="booking-name">' + (b.type === 'group' ? '👥 ' : '👤 ') + escapeHtml(b.name) + statusBadge + sourceBadge(b) + (isC ? '<span style="color:#e74c3c">⚠️ ห้องชน!</span>' : '') + '</div>' +
         roomTypeStr +
-        '<div class="booking-meta">' + dateStr + ' · ' + nights + ' คืน' + (b.extraBeds > 0 ? ' · 🛏 เตียงเสริม ' + b.extraBeds : '') + (b.notes ? ' · ' + escapeHtml(b.notes) : '') + '</div>' +
+        '<div class="booking-meta">' + dateStr + ' · ' + nights + ' คืน' + (b.extraBeds > 0 ? ' · 🛏 เตียงเสริม ' + b.extraBeds : '') + (b.notes && b.source !== 'agoda' ? ' · ' + escapeHtml(b.notes) : '') + '</div>' +
         '<div class="booking-rooms">' + roomsHtml + '</div>' +
       '</div>' +
       '<div class="booking-actions">' +
