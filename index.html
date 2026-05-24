@@ -1057,8 +1057,18 @@ function renderBookingList() {
     const roomsHtml = sortedRooms.length > 0
       ? sortedRooms.map(r => '<span class="room-tag">ห้อง ' + r + '</span>').join('')
       : '<span class="room-tag" style="background:#f9e79f;color:#7d6608">⚠️ ยังไม่จัดห้อง</span>';
-    const guestCount = (b.extraInfo && b.extraInfo.no_of_adults) ? b.extraInfo.no_of_adults + ' ผู้ใหญ่' : '';
-    const roomTypeStr = b.roomType ? '<div style="font-size:12px;color:#34495e;margin-top:4px;font-weight:600">📋 ' + escapeHtml(b.roomType) + (guestCount ? ' · ' + guestCount : '') + '</div>' : (guestCount ? '<div style="font-size:12px;color:#7f8c8d;margin-top:2px">' + guestCount + '</div>' : '');
+    const guestCount  = (b.extraInfo && b.extraInfo.no_of_adults)  ? b.extraInfo.no_of_adults + ' ผู้ใหญ่' : '';
+    const noOfRooms   = (b.extraInfo && b.extraInfo.no_of_rooms > 1) ? b.extraInfo.no_of_rooms + ' ห้อง' : '';
+    const extraBedAg  = (b.extraInfo && b.extraInfo.no_of_extra_beds > 0) ? '🛏 เตียงเสริม ' + b.extraInfo.no_of_extra_beds : '';
+    const specialReq  = (b.extraInfo && b.extraInfo.special_requests) ? b.extraInfo.special_requests : '';
+    const agodaMeta   = [noOfRooms, guestCount, extraBedAg].filter(Boolean).join(' · ');
+    const roomTypeStr = (b.roomType || agodaMeta || specialReq)
+      ? '<div style="font-size:12px;color:#34495e;margin-top:4px;font-weight:600">'
+          + (b.roomType ? '📋 ' + escapeHtml(b.roomType) : '')
+          + (agodaMeta ? '<span style="color:#7f8c8d;font-weight:500"> · ' + agodaMeta + '</span>' : '')
+        + '</div>'
+        + (specialReq ? '<div style="font-size:12px;color:#8e44ad;margin-top:2px">💬 ' + escapeHtml(specialReq) + '</div>' : '')
+      : '';
     const actionBtn = b.status === 'pending'
       ? '<button class="btn btn-sm btn-primary" onclick="openQuickAssign(\'' + b.id + '\')">⚡ จัดห้องด่วน</button>'
       : '<button class="btn btn-sm" onclick="editBooking(\'' + b.id + '\')">✏️ แก้ไข</button>';
