@@ -248,6 +248,34 @@
   .checkbox-row input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
   .checkbox-row label { cursor: pointer; font-size: 14px; color: #34495e; }
   .hidden { display: none !important; }
+
+  /* === Notification Tab === */
+  .notify-badge { display: inline-flex; align-items: center; justify-content: center;
+    background: #e74c3c; color: white; font-size: 10px; font-weight: 700;
+    width: 18px; height: 18px; border-radius: 50%; margin-left: 4px; vertical-align: middle; }
+  .notify-card { background: white; border-radius: 12px; padding: 16px;
+    margin-bottom: 12px; border-left: 4px solid #e74c3c;
+    box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+  .notify-card.modification { border-left-color: #f39c12; }
+  .notify-card.applied { opacity: .55; border-left-color: #27ae60; }
+  .notify-card.dismissed { opacity: .45; border-left-color: #bdc3c7; }
+  .notify-type { font-size: 11px; font-weight: 700; text-transform: uppercase;
+    padding: 2px 8px; border-radius: 10px; display: inline-block; }
+  .notify-type.cancellation { background: #fde8e6; color: #c0392b; }
+  .notify-type.modification { background: #fef3cd; color: #b7770d; }
+  .notify-type.applied { background: #d5f5e3; color: #1e8449; }
+  .notify-type.dismissed { background: #f0f3f4; color: #7f8c8d; }
+  .notify-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .notify-date { font-size: 12px; color: #95a5a6; margin-left: auto; }
+  .notify-name { font-size: 15px; font-weight: 700; color: #2c3e50; }
+  .notify-meta { font-size: 13px; color: #7f8c8d; margin: 4px 0; }
+  .notify-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .btn-notify-apply { background: #27ae60; color: white; border: none; padding: 7px 14px;
+    border-radius: 8px; font-size: 13px; cursor: pointer; font-family: inherit; }
+  .btn-notify-apply:hover { background: #229954; }
+  .btn-notify-dismiss { background: #ecf0f1; color: #7f8c8d; border: none; padding: 7px 14px;
+    border-radius: 8px; font-size: 13px; cursor: pointer; font-family: inherit; }
+  .btn-notify-dismiss:hover { background: #dfe6e9; }
 </style>
 </head>
 <body>
@@ -288,6 +316,7 @@
     <button class="tab" onclick="switchTab('list', this)">📋 รายการจองทั้งหมด</button>
     <button class="tab" onclick="switchTab('line', this)">💬 สร้างข้อความ Line</button>
     <button class="tab" onclick="switchTab('summary', this)">📊 สรุปยอด</button>
+    <button class="tab" id="tabNotifyBtn" onclick="switchTab('notify', this)">🔔 แจ้งเตือน</button>
   </div>
 
   <div id="tab-calendar" class="tab-panel">
@@ -456,6 +485,14 @@
       <div id="roomOccupancy"></div>
     </div>
   </div>
+
+  <div id="tab-notify" class="tab-panel hidden">
+    <div class="panel">
+      <h2>🔔 แจ้งเตือน</h2>
+      <p style="font-size:13px;color:#7f8c8d;margin-bottom:16px">การยกเลิกหรือแก้ไขจาก Agoda — กด "รับทราบ" เพื่ออัพเดตตาราง</p>
+      <div id="notifyList"><div class="empty-state"><div class="icon">🔕</div><div>ไม่มีการแจ้งเตือน</div></div></div>
+    </div>
+  </div>
 </div>
 
 <div id="quickAssignModal" class="modal-backdrop" onclick="if(event.target.id==='quickAssignModal') closeQuickAssign()">
@@ -493,6 +530,7 @@ const THAI_DAYS = ['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'];
 
 // ===== State =====
 let bookings = [];
+let notifData = [];
 let editingId = null;
 let calMonth = new Date().getMonth();
 let calYear = new Date().getFullYear();
@@ -621,6 +659,7 @@ function switchTab(name, btn) {
   if (name === 'list') renderBookingList();
   if (name === 'summary') renderSummary();
   if (name === 'calendar') renderCalendar();
+  if (name === 'notify') renderNotifications();
 }
 
 // ===== Calendar =====
@@ -1415,7 +1454,125 @@ function subscribeRealtime() {
       if (!document.getElementById('tab-summary').classList.contains('hidden')) renderSummary();
       showToast('🔄 มีการอัพเดตจากเครื่องอื่น', 'success');
     })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, async () => {
+      await loadNotifications();
+      if (!document.getElementById('tab-notify').classList.contains('hidden')) renderNotifications();
+      showToast('🔔 มีการแจ้งเตือนใหม่', 'success');
+    })
     .subscribe();
+}
+
+// ===== Notifications =====
+async function loadNotifications() {
+  try {
+    const { data, error } = await sb.from('notifications').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    notifData = data || [];
+    updateNotifyBadge();
+  } catch(e) { console.error('loadNotifications error:', e); }
+}
+
+function updateNotifyBadge() {
+  const pending = notifData.filter(n => n.status === 'pending').length;
+  const btn = document.getElementById('tabNotifyBtn');
+  let badge = btn.querySelector('.notify-badge');
+  if (!badge) { badge = document.createElement('span'); badge.className = 'notify-badge'; btn.appendChild(badge); }
+  if (pending > 0) { badge.textContent = pending; badge.classList.remove('hidden'); }
+  else { badge.classList.add('hidden'); }
+}
+
+function renderNotifications() {
+  const el = document.getElementById('notifyList');
+  if (!notifData.length) {
+    el.innerHTML = '<div class="empty-state"><div class="icon">🔕</div><div>ไม่มีการแจ้งเตือน</div></div>';
+    return;
+  }
+  el.innerHTML = notifData.map(n => {
+    const d = new Date(n.created_at);
+    const dateStr = d.getDate() + '/' + (d.getMonth()+1) + '/' + (d.getFullYear()+543);
+    const isPending = n.status === 'pending';
+    const typeLabel = n.type === 'cancellation' ? '❌ ยกเลิก' : '✏️ แก้ไข';
+    const typeClass = isPending ? n.type : n.status;
+    const bookingInfo = n.data ? [
+      n.data.room_type ? '📋 ' + escapeHtml(n.data.room_type) : '',
+      n.data.no_of_rooms > 1 ? n.data.no_of_rooms + ' ห้อง' : '',
+      n.data.no_of_adults ? n.data.no_of_adults + ' ผู้ใหญ่' : '',
+      n.data.no_of_children > 0 ? n.data.no_of_children + ' เด็ก' : ''
+    ].filter(Boolean).join(' · ') : '';
+    const dateRange = (n.data && n.data.checkin_date && n.data.checkout_date)
+      ? (()=>{ const ci=parseDate(n.data.checkin_date),co=parseDate(n.data.checkout_date);
+          return ci.getDate()+'/'+(ci.getMonth()+1)+'/'+(ci.getFullYear()+543)+' → '+co.getDate()+'/'+(co.getMonth()+1)+'/'+(co.getFullYear()+543)+' · '+nightsBetween(n.data.checkin_date,n.data.checkout_date)+' คืน'; })()
+      : '';
+    const statusLabel = n.status === 'applied' ? '✅ รับทราบแล้ว' : n.status === 'dismissed' ? '✗ ปิดแล้ว' : '';
+    const appliedDate = n.applied_at ? (() => { const ad=new Date(n.applied_at); return ad.getDate()+'/'+(ad.getMonth()+1)+'/'+(ad.getFullYear()+543); })() : '';
+    return '<div class="notify-card ' + (isPending ? n.type : n.status) + '">' +
+      '<div class="notify-header">' +
+        '<span class="notify-type ' + typeClass + '">' + typeLabel + '</span>' +
+        (n.external_id ? '<span class="source-badge agoda" style="font-size:11px">Agoda #' + escapeHtml(n.external_id) + '</span>' : '') +
+        '<span class="notify-date">' + dateStr + (!isPending && appliedDate ? ' · ' + statusLabel + ' ' + appliedDate : '') + '</span>' +
+      '</div>' +
+      '<div class="notify-name">' + escapeHtml(n.guest_name || '') + '</div>' +
+      (bookingInfo ? '<div class="notify-meta">' + bookingInfo + '</div>' : '') +
+      (dateRange ? '<div class="notify-meta">📅 ' + dateRange + '</div>' : '') +
+      (n.raw_message ? '<div class="notify-meta" style="font-style:italic;color:#aaa;font-size:12px">💬 ' + escapeHtml(n.raw_message) + '</div>' : '') +
+      (isPending ? '<div class="notify-actions">' +
+        (n.type === 'cancellation'
+          ? '<button class="btn-notify-apply" onclick="applyNotifCancel(\'' + n.id + '\',\'' + (n.booking_id||'') + '\')">✅ รับทราบ + ยกเลิก booking</button>'
+          : '<button class="btn-notify-apply" onclick="applyNotifModify(\'' + n.id + '\',\'' + (n.booking_id||'') + '\')">✅ รับทราบ + แก้ไข booking</button>') +
+        '<button class="btn-notify-dismiss" onclick="dismissNotif(\'' + n.id + '\')">✗ ปิด (ไม่ดำเนินการ)</button>' +
+      '</div>' : '') +
+    '</div>';
+  }).join('');
+}
+
+async function applyNotifCancel(notifId, bookingId) {
+  if (!confirm('ยืนยันยกเลิก booking นี้?')) return;
+  try {
+    if (bookingId) {
+      const { error: e1 } = await sb.from('room_schedule').update({ status: 'cancelled' }).eq('id', bookingId);
+      if (e1) throw e1;
+    }
+    const { error: e2 } = await sb.from('notifications').update({ status: 'applied', applied_at: new Date().toISOString() }).eq('id', notifId);
+    if (e2) throw e2;
+    await loadBookings();
+    await loadNotifications();
+    renderNotifications();
+    renderCalendar();
+    if (!document.getElementById('tab-list').classList.contains('hidden')) renderBookingList();
+    showToast('✅ ยกเลิก booking เรียบร้อย', 'success');
+  } catch(e) { showToast('เกิดข้อผิดพลาด: ' + e.message, 'error'); }
+}
+
+async function applyNotifModify(notifId, bookingId) {
+  const notif = notifData.find(n => n.id === notifId);
+  if (!notif || !bookingId) return;
+  if (!confirm('ยืนยันแก้ไข booking ตามข้อมูลใหม่?')) return;
+  try {
+    const updates = {};
+    if (notif.data.checkin_date) updates.checkin_date = notif.data.checkin_date;
+    if (notif.data.checkout_date) updates.checkout_date = notif.data.checkout_date;
+    if (notif.data.room_type) updates.room_type = notif.data.room_type;
+    if (Object.keys(updates).length) {
+      const { error: e1 } = await sb.from('room_schedule').update(updates).eq('id', bookingId);
+      if (e1) throw e1;
+    }
+    const { error: e2 } = await sb.from('notifications').update({ status: 'applied', applied_at: new Date().toISOString() }).eq('id', notifId);
+    if (e2) throw e2;
+    await loadBookings();
+    await loadNotifications();
+    renderNotifications();
+    renderCalendar();
+    showToast('✅ แก้ไข booking เรียบร้อย', 'success');
+  } catch(e) { showToast('เกิดข้อผิดพลาด: ' + e.message, 'error'); }
+}
+
+async function dismissNotif(notifId) {
+  try {
+    const { error } = await sb.from('notifications').update({ status: 'dismissed', applied_at: new Date().toISOString() }).eq('id', notifId);
+    if (error) throw error;
+    await loadNotifications();
+    renderNotifications();
+  } catch(e) { showToast('เกิดข้อผิดพลาด: ' + e.message, 'error'); }
 }
 
 // ===== Init =====
@@ -1423,6 +1580,7 @@ async function init() {
   buildRoomChips();
   showLoading(true);
   await loadBookings();
+  await loadNotifications();
   renderCalendar();
   showLoading(false);
   // Default Line range: this month
