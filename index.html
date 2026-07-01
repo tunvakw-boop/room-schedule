@@ -783,14 +783,14 @@ function buildRoomChips() {
     chip.innerHTML = '<div>' + r + '</div>' +
       '<div class="chip-bed">🛏<input type="number" class="chip-bed-input" min="0" max="3" value="0"></div>';
     chip.onclick = (e) => {
-      if (e.target.classList.contains('chip-bed-input')) return;
+      // คลิกใน chip-bed (input, 🛏 emoji) ไม่ให้ toggle
+      if (e.target.closest('.chip-bed')) return;
       chip.classList.toggle('selected');
       if (!chip.classList.contains('selected')) {
         chip.querySelector('.chip-bed-input').value = 0;
       }
       checkConflictsLive();
     };
-    chip.querySelector('.chip-bed-input').onclick = (e) => e.stopPropagation();
     grid.appendChild(chip);
   });
 }
