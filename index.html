@@ -114,11 +114,12 @@
     font-size: 13px; font-weight: 600; transition: all .15s; user-select: none; }
   .room-chip:hover { background: #e0e8f0; }
   .room-chip.selected { background: #2e7d5e; color: white; border-color: #1f5a44; }
-  .room-chip .chip-bed { display: none; margin-top: 4px; font-size: 10px; }
-  .room-chip.selected .chip-bed { display: flex; align-items: center; justify-content: center; gap: 2px; }
-  .chip-bed-input { width: 34px; padding: 1px 2px; text-align: center;
-    border: none; border-radius: 3px; background: rgba(255,255,255,0.95);
-    color: #2c3e50; font-weight: 700; font-size: 11px; }
+  .room-chip .chip-bed { display: none; margin-top: 4px; font-size: 11px;
+    padding: 3px 8px; background: rgba(255,255,255,0.9); color: #2c3e50;
+    border-radius: 4px; font-weight: 700; cursor: pointer; user-select: none; }
+  .room-chip.selected .chip-bed { display: inline-flex; align-items: center; gap: 3px; }
+  .room-chip .chip-bed:hover { background: rgba(255,255,255,1); }
+  .room-chip .chip-bed:active { transform: scale(0.95); }
   .form-actions { display: flex; gap: 10px; margin-top: 8px; }
 
   .booking-list { display: flex; flex-direction: column; gap: 10px; }
@@ -781,13 +782,19 @@ function buildRoomChips() {
     chip.className = 'room-chip';
     chip.dataset.room = r;
     chip.innerHTML = '<div>' + r + '</div>' +
-      '<div class="chip-bed">🛏<input type="number" class="chip-bed-input" min="0" max="3" value="0"></div>';
+      '<div class="chip-bed" title="แตะเพื่อเปลี่ยนจำนวนเตียงเสริม (0-3)">🛏<span class="chip-bed-val">0</span></div>';
     chip.onclick = (e) => {
-      // คลิกใน chip-bed (input, 🛏 emoji) ไม่ให้ toggle
-      if (e.target.closest('.chip-bed')) return;
+      // คลิกที่ปุ่มเตียงเสริม → เพิ่ม 1 (วนกลับ 0 ที่ 4)
+      if (e.target.closest('.chip-bed')) {
+        e.stopPropagation();
+        if (!chip.classList.contains('selected')) return;
+        const val = chip.querySelector('.chip-bed-val');
+        val.textContent = ((parseInt(val.textContent) || 0) + 1) % 4;
+        return;
+      }
       chip.classList.toggle('selected');
       if (!chip.classList.contains('selected')) {
-        chip.querySelector('.chip-bed-input').value = 0;
+        chip.querySelector('.chip-bed-val').textContent = '0';
       }
       checkConflictsLive();
     };
@@ -803,7 +810,7 @@ function getExtraBedsPerRoom() {
   const result = {};
   document.querySelectorAll('#roomChips .room-chip.selected').forEach(c => {
     const r = parseInt(c.dataset.room);
-    const bed = parseInt(c.querySelector('.chip-bed-input').value) || 0;
+    const bed = parseInt(c.querySelector('.chip-bed-val').textContent) || 0;
     if (bed > 0) result[r] = bed;
   });
   return result;
@@ -898,7 +905,7 @@ function resetForm() {
   document.getElementById('checkOut').value = '';
   document.getElementById('notes').value = '';
   document.querySelectorAll('#roomChips .room-chip.selected').forEach(c => c.classList.remove('selected'));
-  document.querySelectorAll('#roomChips .chip-bed-input').forEach(i => i.value = 0);
+  document.querySelectorAll('#roomChips .chip-bed-val').forEach(s => s.textContent = '0');
   document.getElementById('addAlert').innerHTML = '';
   editingId = null;
   document.getElementById('cancelEditBtn').classList.add('hidden');
@@ -921,8 +928,8 @@ function editBooking(id) {
     document.querySelectorAll('#roomChips .room-chip').forEach(c => {
       const r = parseInt(c.dataset.room);
       c.classList.toggle('selected', b.rooms.includes(r));
-      const input = c.querySelector('.chip-bed-input');
-      if (input) input.value = beds[r] || 0;
+      const val = c.querySelector('.chip-bed-val');
+      if (val) val.textContent = beds[r] || 0;
     });
     document.getElementById('cancelEditBtn').classList.remove('hidden');
     document.getElementById('addAlert').innerHTML = '';
