@@ -767,7 +767,13 @@ function showDayDetails(dateStr) {
       const nightNum = dateRange(b.checkIn, b.checkOut).indexOf(dateStr) + 1;
       const total = nightsBetween(b.checkIn, b.checkOut);
       const sortedRooms = [...b.rooms].sort((x,y) => x - y);
-      msg += '🛋️ ห้อง ' + sortedRooms.join(',') + ' - ' + b.name + ' (คืนที่ ' + nightNum + '/' + total + ')' + (b.extraBeds > 0 ? ' 🛏เตียงเสริม ' + b.extraBeds : '') + '\n';
+      const hasPerRoomBeds = b.extraBedsPerRoom && Object.keys(b.extraBedsPerRoom).length > 0;
+      const roomsFmt = hasPerRoomBeds ? formatRoomsWithBeds(sortedRooms, b.extraBedsPerRoom) : sortedRooms.join(',');
+      const nameStr = b.type === 'group' ? 'กรุ๊ป' + b.name : 'คุณ ' + b.name;
+      const nightStr = total > 1 ? ' (คืนที่ ' + nightNum + '/' + total + ')' : '';
+      const bedStr = (!hasPerRoomBeds && b.extraBeds > 0) ? ' 🛏เตียงเสริม ' + b.extraBeds : '';
+      const noteStr = b.notes ? '\n   📝 ' + b.notes : '';
+      msg += '🛋️ ห้อง ' + roomsFmt + ' ' + nameStr + nightStr + bedStr + noteStr + '\n';
     });
   }
   alert(msg);
