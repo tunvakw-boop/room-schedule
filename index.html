@@ -1373,7 +1373,7 @@ function generateLineMessage() {
       const hasPerRoomBeds = booking.extraBedsPerRoom && Object.keys(booking.extraBedsPerRoom).length > 0;
       const roomsFmt = hasPerRoomBeds ? formatRoomsWithBeds(sortedRooms, booking.extraBedsPerRoom) : sortedRooms.join(',');
       const roomList = sortedRooms.length > 1
-        ? (sortedRooms.length >= TOTAL_ROOMS - 2 ? 'ใช้ทุกห้อง' : 'ห้อง ' + roomsFmt)
+        ? ((sortedRooms.length >= TOTAL_ROOMS - 2 && !hasPerRoomBeds) ? 'ใช้ทุกห้อง' : 'ห้อง ' + roomsFmt)
         : 'ห้อง ' + roomsFmt;
       const nightStr = (useNight && totalNights > 1) ? ' (คืนที่' + nightNum + '/' + totalNights + ')' : '';
       const bedStr = (!hasPerRoomBeds && booking.extraBeds > 0) ? ' 🛏เตียงเสริม ' + booking.extraBeds : '';
