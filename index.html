@@ -773,7 +773,8 @@ function showDayDetails(dateStr) {
         ? Object.values(b.extraBedsPerRoom).reduce((s,v) => s + (parseInt(v) || 0), 0)
         : (b.extraBeds || 0);
       const bedStr = totalBeds > 0 ? ' 🛏เตียงเสริม ' + totalBeds : '';
-      msg += '🛋️ ห้อง ' + roomsFmt + ' - ' + b.name + ' (คืนที่ ' + nightNum + '/' + total + ')' + bedStr + '\n';
+      const noteStr = (b.notes && b.source !== 'agoda') ? ' 📝 ' + b.notes : '';
+      msg += '🛋️ ห้อง ' + roomsFmt + ' - ' + b.name + ' (คืนที่ ' + nightNum + '/' + total + ')' + bedStr + noteStr + '\n';
     });
   }
   alert(msg);
@@ -1377,7 +1378,10 @@ function generateLineMessage() {
         : 'ห้อง ' + roomsFmt;
       const nightStr = (useNight && totalNights > 1) ? ' (คืนที่' + nightNum + '/' + totalNights + ')' : '';
       const bedStr = (!hasPerRoomBeds && booking.extraBeds > 0) ? ' 🛏เตียงเสริม ' + booking.extraBeds : '';
-      msg += bed + roomList + ' ' + (booking.type === 'group' ? 'กรุ๊ป' + booking.name : 'คุณ ' + booking.name) + nightStr + bedStr + '\n';
+      const noteStr = (booking.notes && booking.source !== 'agoda') ? (useEmoji ? ' 📝 ' : ' - ') + booking.notes : '';
+      const who = booking.type === 'group' ? 'กรุ๊ป' + booking.name
+        : (/^คุณ/.test(booking.name) ? booking.name : 'คุณ ' + booking.name);
+      msg += bed + roomList + ' ' + who + nightStr + bedStr + noteStr + '\n';
     });
   });
   if (!hasAny) msg += '\n(ไม่มีการจองในช่วงวันที่เลือก)';
