@@ -734,9 +734,10 @@ function renderCalendar() {
         ? sortedRooms.length + ' ห้อง'
         : 'ห้อง ' + (hasPerRoomBeds ? formatRoomsWithBeds(sortedRooms, b.extraBedsPerRoom) : sortedRooms.join(','));
       const legacyBed = (!hasPerRoomBeds && b.extraBeds > 0) ? ' 🛏' + b.extraBeds : '';
+      const noteTxt = visibleNotes(b);
       pill.innerHTML = '<div class="pill-main">' + escapeHtml(roomStr + ' ' + b.name + legacyBed) + '</div>' +
-        (b.notes ? '<div class="pill-note">📝 ' + escapeHtml(b.notes) + '</div>' : '');
-      pill.title = b.name + ' - ' + roomStr + (b.extraBeds > 0 ? ' + เตียงเสริม ' + b.extraBeds : '') + (b.notes ? '\n📝 ' + b.notes : '');
+        (noteTxt ? '<div class="pill-note">📝 ' + escapeHtml(noteTxt) + '</div>' : '');
+      pill.title = b.name + ' - ' + roomStr + (b.extraBeds > 0 ? ' + เตียงเสริม ' + b.extraBeds : '') + (noteTxt ? '\n📝 ' + noteTxt : '');
       dayCell.appendChild(pill);
       pillCount++;
     });
@@ -773,7 +774,7 @@ function showDayDetails(dateStr) {
         ? Object.values(b.extraBedsPerRoom).reduce((s,v) => s + (parseInt(v) || 0), 0)
         : (b.extraBeds || 0);
       const bedStr = totalBeds > 0 ? ' 🛏เตียงเสริม ' + totalBeds : '';
-      const noteStr = (b.notes && b.source !== 'agoda') ? ' 📝 ' + b.notes : '';
+      const noteStr = visibleNotes(b) ? '\n   📝 ' + visibleNotes(b) : '';
       msg += '🛋️ ห้อง ' + roomsFmt + ' - ' + b.name + ' (คืนที่ ' + nightNum + '/' + total + ')' + bedStr + noteStr + '\n';
     });
   }
@@ -821,6 +822,13 @@ function getExtraBedsPerRoom() {
     if (bed > 0) result[r] = bed;
   });
   return result;
+}
+function visibleNotes(b) {
+  const n = ((b && b.notes) || '').trim();
+  if (!n) return '';
+  // ซ่อนเฉพาะ Agoda auto-generated note ที่ขึ้นต้นด้วย "ประเทศ:" เท่านั้น
+  if (b.source === 'agoda' && /^ประเทศ[:\s]/.test(n)) return '';
+  return n;
 }
 function formatRoomsWithBeds(rooms, bedsPerRoom) {
   const sorted = [...rooms].sort((a, b) => a - b);
@@ -967,7 +975,7 @@ function openQuickAssign(bookingId) {
     (adults || noOfRooms > 1 ? '<div class="meta">' + (noOfRooms > 1 ? noOfRooms + ' ห้อง · ' : '') + adults + '</div>' : '') +
     (country ? '<div class="meta">' + country + '</div>' : '') +
     (specialReqModal ? '<div class="meta" style="color:#8e44ad">💬 ' + escapeHtml(specialReqModal) + '</div>' : '') +
-    (b.notes && b.source !== 'agoda' ? '<div class="meta" style="margin-top:6px;font-style:italic">📝 ' + escapeHtml(b.notes) + '</div>' : '');
+    (visibleNotes(b) ? '<div class="meta" style="margin-top:6px;font-style:italic">📝 ' + escapeHtml(visibleNotes(b)) + '</div>' : '');
 
   // Build room chips
   const grid = document.getElementById('quickAssignRooms');
@@ -1175,7 +1183,7 @@ function renderBookingList() {
       '<div class="booking-info">' +
         '<div class="booking-name">' + (b.type === 'group' ? '👥 ' : '👤 ') + escapeHtml(b.name) + statusBadge + sourceBadge(b) + (isC ? '<span style="color:#e74c3c">⚠️ ห้องชน!</span>' : '') + '</div>' +
         roomTypeStr +
-        '<div class="booking-meta">' + dateStr + ' · ' + nights + ' คืน' + ((!Object.keys(bedsMap).length && b.extraBeds > 0) ? ' · 🛏 เตียงเสริม ' + b.extraBeds : '') + (b.notes && b.source !== 'agoda' ? ' · 📝 ' + escapeHtml(b.notes) : '') + '</div>' +
+        '<div class="booking-meta">' + dateStr + ' · ' + nights + ' คืน' + ((!Object.keys(bedsMap).length && b.extraBeds > 0) ? ' · 🛏 เตียงเสริม ' + b.extraBeds : '') + (visibleNotes(b) ? ' · 📝 ' + escapeHtml(visibleNotes(b)) : '') + '</div>' +
         '<div class="booking-rooms">' + roomsHtml + '</div>' +
       '</div>' +
       '<div class="booking-actions">' +
@@ -1378,10 +1386,8 @@ function generateLineMessage() {
         : 'ห้อง ' + roomsFmt;
       const nightStr = (useNight && totalNights > 1) ? ' (คืนที่' + nightNum + '/' + totalNights + ')' : '';
       const bedStr = (!hasPerRoomBeds && booking.extraBeds > 0) ? ' 🛏เตียงเสริม ' + booking.extraBeds : '';
-      const noteStr = (booking.notes && booking.source !== 'agoda') ? (useEmoji ? ' 📝 ' : ' - ') + booking.notes : '';
-      const who = booking.type === 'group' ? 'กรุ๊ป' + booking.name
-        : (/^คุณ/.test(booking.name) ? booking.name : 'คุณ ' + booking.name);
-      msg += bed + roomList + ' ' + who + nightStr + bedStr + noteStr + '\n';
+      const noteStr = visibleNotes(booking) ? '\n   📝 ' + visibleNotes(booking) : '';
+      msg += bed + roomList + ' ' + (booking.type === 'group' ? 'กรุ๊ป' + booking.name : 'คุณ ' + booking.name) + nightStr + bedStr + noteStr + '\n';
     });
   });
   if (!hasAny) msg += '\n(ไม่มีการจองในช่วงวันที่เลือก)';
