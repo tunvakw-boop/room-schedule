@@ -850,6 +850,7 @@ function checkConflictsLive() {
     dates.forEach(d => {
       bookings.forEach(b => {
         if (b.id === editingId) return;
+        if (b.status === 'cancelled') return;
         if (b.rooms.includes(r) && dateRange(b.checkIn, b.checkOut).includes(d)) {
           conflicts.push('ห้อง ' + r + ' วันที่ ' + parseDate(d).getDate() + ' ชน "' + b.name + '"');
         }
@@ -1089,6 +1090,7 @@ function detectAllConflicts() {
   for (let i = 0; i < bookings.length; i++) {
     for (let j = i + 1; j < bookings.length; j++) {
       const a = bookings[i], b = bookings[j];
+      if (a.status === 'cancelled' || b.status === 'cancelled') continue;
       if (!a.rooms.some(r => b.rooms.includes(r))) continue;
       const aDates = new Set(dateRange(a.checkIn, a.checkOut));
       if (dateRange(b.checkIn, b.checkOut).some(d => aDates.has(d))) {
